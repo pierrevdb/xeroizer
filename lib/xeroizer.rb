@@ -72,6 +72,7 @@ require 'xeroizer/models/user'
 require 'xeroizer/models/journal_line_tracking_category'
 require 'xeroizer/models/contact_sales_tracking_category'
 require 'xeroizer/models/contact_purchases_tracking_category'
+require 'xeroizer/models/history_record'
 
 require 'xeroizer/models/payroll/home_address'
 require 'xeroizer/models/payroll/bank_account'

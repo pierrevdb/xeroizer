@@ -156,6 +156,15 @@ module Xeroizer
         result
       end
 
+      def history(id,options = {})
+        raise MethodNotAllowed.new(self, :all) unless self.class.permissions[:read]
+        response_xml = @application.http_get(@application.client, "#{url}/#{CGI.escape(id)}/history", options)
+        options[:override_model_name] = 'HistoryRecord'
+        response = parse_response(response_xml, options)
+        result = response.response_items
+        result
+      end
+
       def save_records(records, chunk_size = DEFAULT_RECORDS_PER_BATCH_SAVE)
         no_errors = true
         return false unless records.all?(&:valid?)
@@ -197,10 +206,13 @@ module Xeroizer
       end
 
       def parse_response(response_xml, options = {})
+        apply_model_name = options.delete(:override_model_name)
+        apply_model_name ||= model_name
+        klass = Xeroizer::Record.const_get(apply_model_name.to_sym)
         Response.parse(response_xml, options) do | response, elements, response_model_name |
-          if model_name == response_model_name
+          if apply_model_name == response_model_name
             @response = response
-            parse_records(response, elements, paged_records_requested?(options), (options[:base_module] || Xeroizer::Record))
+            parse_records(response, elements, paged_records_requested?(options), (options[:base_module] || Xeroizer::Record), klass)
           end
         end
       end
@@ -217,9 +229,9 @@ module Xeroizer
       end
 
       # Parse the records part of the XML response and builds model instances as necessary.
-      def parse_records(response, elements, paged_results, base_module)
+      def parse_records(response, elements, paged_results, base_module, klass)
         elements.each do | element |
-          new_record = model_class.build_from_node(element, self, base_module)
+          new_record = klass.build_from_node(element, self, base_module)
           if element.attribute('status').try(:value) == 'ERROR'
             new_record.errors = []
             element.xpath('.//ValidationError').each do |err|
